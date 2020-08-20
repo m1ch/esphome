@@ -46,6 +46,12 @@ def validate_count_mode(value):
                          "all!")
     return value
 
+def validate_slow_pulsecounter(value):
+    if CORE.is_esp8266 and value==False:
+        raise cv.Invalid("Only ESP32 supports the fast pulse-counter mode")
+    return value
+
+CONF_SLOW_PULSECOUNTER = 'slow'
 
 CONFIG_SCHEMA = sensor.sensor_schema(UNIT_PULSES_PER_MINUTE, ICON_PULSE, 2).extend({
     cv.GenerateID(): cv.declare_id(PulseCounterSensor),
@@ -57,9 +63,9 @@ CONFIG_SCHEMA = sensor.sensor_schema(UNIT_PULSES_PER_MINUTE, ICON_PULSE, 2).exte
         cv.Required(CONF_RISING_EDGE): COUNT_MODE_SCHEMA,
         cv.Required(CONF_FALLING_EDGE): COUNT_MODE_SCHEMA,
     }), validate_count_mode),
+    cv.Optional(CONF_SLOW_PULSECOUNTER, default=(False if CORE.is_esp32 else True)): validate_slow_pulsecounter,
     cv.Optional(CONF_INTERNAL_FILTER, default='13us'): validate_internal_filter,
 }).extend(cv.polling_component_schema('60s'))
-
 
 def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
@@ -72,3 +78,5 @@ def to_code(config):
     cg.add(var.set_rising_edge_mode(count[CONF_RISING_EDGE]))
     cg.add(var.set_falling_edge_mode(count[CONF_FALLING_EDGE]))
     cg.add(var.set_filter_us(config[CONF_INTERNAL_FILTER]))
+    if config[CONF_SLOW_PULSECOUNTER]:
+        cg.add_define('USE_SLOW_PULSECOUNTER')
